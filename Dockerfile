@@ -3,10 +3,21 @@ FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 
+# Apply available Debian security updates
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade Python packaging tools and vulnerable packages
+RUN python -m pip install --no-cache-dir --upgrade \
+    pip setuptools urllib3 msgpack
+
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
 RUN useradd --create-home appuser
