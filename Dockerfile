@@ -12,14 +12,23 @@ RUN apt-get update \
     && apt-get upgrade -y \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade Python packaging tools and vulnerable packages
+# Install updated Python packaging tools
 RUN python -m pip install --no-cache-dir --upgrade \
     pip setuptools urllib3 msgpack
 
+# Install application dependencies
 COPY requirements.txt .
+RUN python -m pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Remove pip and its bundled dependencies from the runtime image
+RUN python -c "import pathlib, shutil, sysconfig; \
+site = pathlib.Path(sysconfig.get_paths()['purelib']); \
+shutil.rmtree(site / 'pip', ignore_errors=True); \
+[shutil.rmtree(p, ignore_errors=True) for p in site.glob('pip-*.dist-info')]; \
+[shutil.rmtree(p, ignore_errors=True) for p in site.glob('pip-*.egg-info')]" \
+    && rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.14
 
+# Create an unprivileged application user
 RUN useradd --create-home appuser
 
 COPY app.py .
